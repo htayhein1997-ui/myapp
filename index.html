@@ -28,13 +28,14 @@
                 <span class="badge bg-light text-success border rounded-pill ms-1" style="font-size: 11px;">Safe Storage</span>
             </a>
             
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
                 <div class="d-flex align-items-center bg-light p-1 px-2 rounded-3 border">
                     <input type="date" id="dateFilter" class="form-control form-control-sm border-0 bg-transparent text-secondary font-monospace" style="outline: none; box-shadow: none; width: 130px;">
                     <button onclick="clearFilter()" class="btn btn-sm text-muted p-0 ms-2" style="font-size: 11px;">Clear</button>
                 </div>
                 
-                <!-- Backup Buttons -->
+                <!-- Action Buttons -->
+                <button onclick="exportExcel()" class="btn btn-success btn-sm fw-medium" style="font-size: 11px;">📊 Excel ထုတ်ယူရန်</button>
                 <button onclick="exportBackup()" class="btn btn-outline-dark btn-sm fw-medium" style="font-size: 11px;">⬇️ Backup သိမ်းရန်</button>
                 <button onclick="document.getElementById('importFile').click()" class="btn btn-outline-secondary btn-sm fw-medium" style="font-size: 11px;">⬆️ ပြန်သွင်းရန်</button>
                 <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importBackup(this)">
@@ -121,8 +122,18 @@
                             <input type="date" id="expDate" required class="form-control form-control-sm">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label text-muted" style="font-size: 11px;">အကြောင်းအရာ</label>
-                            <input type="text" id="expTitle" required class="form-control form-control-sm">
+                            <label class="form-label text-muted" style="font-size: 11px;">အကြောင်းအရာ ရွေးချယ်ရန်</label>
+                            <select id="expCategory" class="form-select form-select-sm" onchange="handleCategoryChange()">
+                                <option value="အိမ်အသုံးစရိတ်" data-amount="25000">🏡 အိမ်အသုံးစရိတ် (25,000 Ks)</option>
+                                <option value="အိမ်အသုံးစရိတ်" data-amount="30000">🏡 အိမ်အသုံးစရိတ် (30,000 Ks)</option>
+                                <option value="စားစရိတ်" data-amount="10000">🍲 စားစရိတ် (10,000 Ks)</option>
+                                <option value="သွားလာစရိတ်" data-amount="5000">🚌 သွားလာစရိတ် (5,000 Ks)</option>
+                                <option value="အထွေထွေ" data-amount="">✍️ ကိုယ်တိုင်စိတ်ကြိုက်စာရိုက်ထည့်မည်</option>
+                            </select>
+                        </div>
+                        <div id="customTitleDiv" class="mb-3" style="display: none;">
+                            <label class="form-label text-muted" style="font-size: 11px;">အခြား အကြောင်းအရာ ရေးရန်</label>
+                            <input type="text" id="expCustomTitle" class="form-control form-control-sm" placeholder="ဥပမာ - မုန့်ဖိုး">
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted" style="font-size: 11px;">အသုံးစရိတ် ပမာဏ (ကျပ်)</label>
@@ -135,7 +146,7 @@
         </div>
     </div>
 
-    <!-- Secure IndexedDB & Backup Script -->
+    <!-- Secure IndexedDB, Excel Export & Backup Script -->
     <script>
         let db;
         const dbName = "WealthFlowDB";
@@ -165,7 +176,30 @@
             document.getElementById('incDate').value = today;
             document.getElementById('expDate').value = today;
             document.getElementById('dateFilter').value = today;
+            handleCategoryChange(); // Set default values
             renderUI();
+        }
+
+        // Option တွေပြောင်းရင် ပမာဏ Auto ဖြည့်ပေးသည့် Function
+        function handleCategoryChange() {
+            const select = document.getElementById('expCategory');
+            const selectedOption = select.options[select.selectedIndex];
+            const amountInput = document.getElementById('expAmount');
+            const customTitleDiv = document.getElementById('customTitleDiv');
+            const customTitleInput = document.getElementById('expCustomTitle');
+
+            const autoAmount = selectedOption.getAttribute('data-amount');
+            
+            if (selectedOption.value === "အထွေထွေ") {
+                customTitleDiv.style.display = "block";
+                customTitleInput.setAttribute('required', 'true');
+                amountInput.value = "";
+            } else {
+                customTitleDiv.style.display = "none";
+                customTitleInput.removeAttribute('required');
+                customTitleInput.value = "";
+                amountInput.value = autoAmount;
+            }
         }
 
         function getAllData(storeName) {
@@ -207,7 +241,7 @@
                     div.innerHTML = `
                         <div>
                             <span class="d-block fw-semibold" style="font-size: 13px;">ဝင်ငွေ: ${Number(item.amount).toLocaleString()} Ks</span>
-                            <small class="text-muted" style="font-size: 10px;">၂၅%: ${(item.amount*0.25).toLocaleString()} | အခြား: ${Number(item.otherSavings).toLocaleString()}</small>
+                            <small class="text-muted" style="font-size: 10px;">ရက်စွဲ: ${item.date} | ၂၅%: ${(item.amount*0.25).toLocaleString()} | အခြား: ${Number(item.otherSavings).toLocaleString()}</small>
                         </div>
                         <button onclick="deleteItem('incomes', '${item.id}')" class="btn btn-sm text-danger p-0" style="font-size: 11px;">Delete</button>
                     `;
@@ -223,6 +257,7 @@
                         <div>
                             <span class="d-block fw-semibold" style="font-size: 13px;">${item.title}</span>
                             <small class="text-danger" style="font-size: 11px;">-${Number(item.amount).toLocaleString()} Ks</small>
+                            <span class="d-block text-muted" style="font-size: 10px;">ရက်စွဲ: ${item.date}</span>
                         </div>
                         <button onclick="deleteItem('expenses', '${item.id}')" class="btn btn-sm text-danger p-0" style="font-size: 11px;">Delete</button>
                     `;
@@ -264,15 +299,24 @@
 
         document.getElementById('expenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const select = document.getElementById('expCategory');
+            let finalTitle = select.value;
+
+            if (select.value === "အထွေထွေ") {
+                finalTitle = document.getElementById('expCustomTitle').value;
+            }
+
             const data = {
                 id: 'exp_' + Date.now(),
                 date: document.getElementById('expDate').value,
-                title: document.getElementById('expTitle').value,
+                title: finalTitle,
                 amount: Number(document.getElementById('expAmount').value)
             };
+            
             await addData('expenses', data);
-            document.getElementById('expTitle').value = '';
-            document.getElementById('expAmount').value = '';
+            document.getElementById('expCustomTitle').value = '';
+            handleCategoryChange(); // Reset Select Option & Amount
             renderUI();
         });
 
@@ -285,7 +329,55 @@
             }
         }
 
-        // ⬇️ ဒေတာများကို ဖုန်းထဲသို့ Backup ဖိုင်ထုတ်ယူခြင်း (Export)
+        // 📊 Excel (CSV) Format ဖြင့် ဒေတာများ ထုတ်ယူခြင်း (Export)
+        async function exportExcel() {
+            const localIncomes = await getAllData('incomes');
+            const localExpenses = await getAllData('expenses');
+            
+            const activeFilter = document.getElementById('dateFilter').value;
+            let filteredIncomes = activeFilter ? localIncomes.filter(i => i.date === activeFilter) : localIncomes;
+            let filteredExpenses = activeFilter ? localExpenses.filter(i => i.date === activeFilter) : localExpenses;
+
+            if (filteredIncomes.length === 0 && filteredExpenses.length === 0) {
+                alert("ထုတ်ယူရန် ဒေတာမရှိသေးပါဗျာ။");
+                return;
+            }
+
+            // 1. Generate Incomes CSV
+            let csvIncome = "\uFEFFရက်စွဲ,ဝင်ငွေစုစုပေါင်း (ကျပ်),၂၅% စုငွေ (ကျပ်),အခြားစုငွေ (ကျပ်)\n";
+            filteredIncomes.forEach(i => {
+                csvIncome += `${i.date},${i.amount},${i.amount * 0.25},${i.otherSavings}\n`;
+            });
+
+            // 2. Generate Expenses CSV
+            let csvExpense = "\uFEFFရက်စွဲ,အသုံးစရိတ် အကြောင်းအရာ,အသုံးပြုငွေ (ကျပ်)\n";
+            filteredExpenses.forEach(e => {
+                csvExpense += `${e.date},"${e.title.replace(/"/g, '""')}",${e.amount}\n`;
+            });
+
+            // Download Incomes File
+            downloadCSVFile(csvIncome, `WealthFlow_Incomes_${activeFilter || 'All'}.csv`);
+            // Download Expenses File (Delay slightly to avoid browser blocking multiple downloads)
+            setTimeout(() => {
+                downloadCSVFile(csvExpense, `WealthFlow_Expenses_${activeFilter || 'All'}.csv`);
+            }, 300);
+        }
+
+        function downloadCSVFile(csvContent, fileName) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", fileName);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // ⬇️ Backup ဖိုင်ထုတ်ယူခြင်း (Export JSON)
         async function exportBackup() {
             const incomes = await getAllData('incomes');
             const expenses = await getAllData('expenses');
@@ -300,7 +392,7 @@
             downloadAnchor.remove();
         }
 
-        // ⬆️ သိမ်းထားသော Backup ဖိုင်ကို ပြန်သွင်းခြင်း (Import)
+        // ⬆️ Backup ပြန်သွင်းခြင်း (Import JSON)
         function importBackup(input) {
             const file = input.files[0];
             if (!file) return;
@@ -310,13 +402,10 @@
                 try {
                     const backupData = JSON.parse(e.target.result);
                     if (backupData.incomes && backupData.expenses) {
-                        
-                        // Clear Old Data First
                         const tx = db.transaction(['incomes', 'expenses'], 'readwrite');
                         tx.objectStore('incomes').clear();
                         tx.objectStore('expenses').clear();
 
-                        // Insert Imported Data
                         for (let inc of backupData.incomes) {
                             await addData('incomes', inc);
                         }
