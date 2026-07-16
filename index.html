@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthFlow - Android Premium Tracker</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .premium-card { border: 1px solid #f1f5f9; border-radius: 1rem; background: #ffffff; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); }
+        .card-edge-primary { border-left: 4px solid #4f46e5 !important; }
+        .card-edge-emerald { border-left: 4px solid #10b981 !important; }
+        .card-edge-indigo { border-left: 4px solid #6366f1 !important; }
+        .card-edge-rose { border-left: 4px solid #f43f5e !important; }
+        .grand-banner { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-radius: 1rem; color: #ffffff; }
+        .scroll-list { max-height: 350px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-b sticky-top shadow-sm py-3">
+        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <a class="navbar-brand fw-bold text-primary m-0" href="#">
+                <span style="color: #4f46e5;">WealthFlow</span>
+                <span class="badge bg-light text-success border rounded-pill ms-1" style="font-size: 11px;">Safe Storage</span>
+            </a>
+            
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="d-flex align-items-center bg-light p-1 px-2 rounded-3 border">
+                    <input type="date" id="dateFilter" class="form-control form-control-sm border-0 bg-transparent text-secondary font-monospace" style="outline: none; box-shadow: none; width: 130px;">
+                    <button onclick="clearFilter()" class="btn btn-sm text-muted p-0 ms-2" style="font-size: 11px;">Clear</button>
+                </div>
+                
+                <!-- Action Buttons -->
+                <button onclick="exportExcel()" class="btn btn-success btn-sm fw-medium" style="font-size: 11px;">📊 Excel ထုတ်ယူရန်</button>
+                <button onclick="exportBackup()" class="btn btn-outline-dark btn-sm fw-medium" style="font-size: 11px;">⬇️ Backup သိမ်းရန်</button>
+                <button onclick="document.getElementById('importFile').click()" class="btn btn-outline-secondary btn-sm fw-medium" style="font-size: 11px;">⬆️ ပြန်သွင်းရန်</button>
+                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importBackup(this)">
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row g-4">
+            <!-- LEFT & MIDDLE COLUMNS -->
+            <div class="col-lg-8 order-2 order-lg-1">
+                
+                <!-- 🌟 (၂၅% စုငွေ စုစုပေါင်း) ရဲ့ အပေါ်မှာပြသမည့် စုစုပေါင်းဝင်ငွေကတ်သစ် -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <div class="premium-card card-edge-primary p-4">
+                            <span class="text-uppercase text-muted fw-bold" style="font-size: 11px; display:block;">စုစုပေါင်းဝင်ငွေ (ရက်စွဲအလိုက်)</span>
+                            <h3 id="totalIncomeFiltered" class="fw-bold text-primary mt-2 mb-1">0 Ks</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="premium-card card-edge-emerald p-4">
+                            <span class="text-uppercase text-muted fw-bold" style="font-size: 11px; display:block;">၂၅% စုငွေ စုစုပေါင်း</span>
+                            <h3 id="totalPercentSavings" class="fw-bold text-dark mt-2 mb-1">0 Ks</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="premium-card card-edge-indigo p-4">
+                            <span class="text-uppercase text-muted fw-bold" style="font-size: 11px; display:block;">အခြားစုငွေ စုစုပေါင်း</span>
+                            <h3 id="totalOtherSavings" class="fw-bold text-dark mt-2 mb-1">0 Ks</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="premium-card card-edge-rose p-4">
+                            <span class="text-uppercase text-muted fw-bold" style="font-size: 11px; display:block;">အသုံးစရိတ် စုစုပေါင်း</span>
+                            <h3 id="totalExpenses" class="fw-bold text-dark mt-2 mb-1">0 Ks</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grand Total Banner (တစ်နှစ်စာ subtotal ကို အမြဲပုံသေပြမည့်နေရာ) -->
+                <div id="grandTotalBanner" class="grand-banner p-4 mb-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-medium mb-1" id="bannerTitle">တစ်နှစ်စာ စုစုပေါင်း စုမိငွေ အားလုံး (Subtotal)</h5>
+                    </div>
+                    <div class="text-end">
+                        <h2 id="grandTotalSavings" class="fw-bold text-success m-0" style="color: #34d399 !important;">0 Ks</h2>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="premium-card p-4">
+                            <h6 class="fw-bold text-dark mb-3">💰 ဝင်ငွေနှင့် စုငွေမှတ်တမ်း</h6>
+                            <div class="scroll-list d-flex flex-column gap-2" id="incomeList"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="premium-card p-4">
+                            <h6 class="fw-bold text-dark mb-3">💸 နေ့စဉ် အသုံးစရိတ်မှတ်တမ်း</h6>
+                            <div class="scroll-list d-flex flex-column gap-2" id="expenseList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN (Forms) -->
+            <div class="col-lg-4 order-1 order-lg-2">
+                <div class="premium-card p-4 mb-3">
+                    <h6 class="fw-bold text-dark mb-3">+ ဝင်ငွေ/စုငွေ ထည့်ရန်</h6>
+                    <form id="incomeForm">
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">ရက်စွဲ</label>
+                            <input type="date" id="incDate" required class="form-control form-control-sm">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">ဝင်ငွေ (ကျပ်)</label>
+                            <input type="number" id="incAmount" required class="form-control form-control-sm">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">အခြားစုငွေ (ကျပ်)</label>
+                            <input type="number" id="incOther" required class="form-control form-control-sm">
+                        </div>
+                        <button type="submit" class="btn btn-dark btn-sm w-100 py-2">သိမ်းဆည်းမည်</button>
+                    </form>
+                </div>
+
+                <div class="premium-card p-4">
+                    <h6 class="fw-bold text-dark mb-3">- အသုံးစရိတ် ထည့်ရန်</h6>
+                    <form id="expenseForm">
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">ရက်စွဲ</label>
+                            <input type="date" id="expDate" required class="form-control form-control-sm">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">အကြောင်းအရာ ရွေးချယ်ရန်</label>
+                            <select id="expCategory" class="form-select form-select-sm" onchange="handleCategoryChange()">
+                                <option value="အိမ်အသုံးစရိတ်" data-amount="25000">🏡 အိမ်အသုံးစရိတ် (25,000 Ks)</option>
+                                <option value="အိမ်အသုံးစရိတ်" data-amount="30000">🏡 အိမ်အသုံးစရိတ် (30,000 Ks)</option>
+                                <option value="စားစရိတ်" data-amount="10000">🍲 စားစရိတ် (10,000 Ks)</option>
+                                <option value="သွားလာစရိတ်" data-amount="5000">🚌 သွားလာစရိတ် (5,000 Ks)</option>
+                                <option value="အထွေထွေ" data-amount="">✍️ ကိုယ်တိုင်စိတ်ကြိုက်စာရိုက်ထည့်မည်</option>
+                            </select>
+                        </div>
+                        <div id="customTitleDiv" class="mb-3" style="display: none;">
+                            <label class="form-label text-muted" style="font-size: 11px;">အခြား အကြောင်းအရာ ရေးရန်</label>
+                            <input type="text" id="expCustomTitle" class="form-control form-control-sm" placeholder="ဥပမာ - မုန့်ဖိုး">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted" style="font-size: 11px;">အသုံးစရိတ် ပမာဏ (ကျပ်)</label>
+                            <input type="number" id="expAmount" required class="form-control form-control-sm">
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-sm w-100 py-2">သိမ်းဆည်းမည်</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secure IndexedDB, Excel Export & Backup Script -->
+    <script>
+        let db;
+        const dbName = "WealthFlowDB";
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = function(event) {
+            console.error("Database error: " + event.target.errorCode);
+        };
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains('incomes')) {
+                db.createObjectStore('incomes', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('expenses')) {
+                db.createObjectStore('expenses', { keyPath: 'id' });
+            }
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            initApp();
+        };
+
+        function initApp() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('incDate').value = today;
+            document.getElementById('expDate').value = today;
+            document.getElementById('dateFilter').value = today;
+            handleCategoryChange();
+            renderUI();
+        }
+
+        function handleCategoryChange() {
+            const select = document.getElementById('expCategory');
+            const selectedOption = select.options[select.selectedIndex];
+            const amountInput = document.getElementById('expAmount');
+            const customTitleDiv = document.getElementById('customTitleDiv');
+            const customTitleInput = document.getElementById('expCustomTitle');
+
+            const autoAmount = selectedOption.getAttribute('data-amount');
+            
+            if (selectedOption.value === "အထွေထွေ") {
+                customTitleDiv.style.display = "block";
+                customTitleInput.setAttribute('required', 'true');
+                amountInput.value = "";
+            } else {
+                customTitleDiv.style.display = "none";
+                customTitleInput.removeAttribute('required');
+                customTitleInput.value = "";
+                amountInput.value = autoAmount;
+            }
+        }
+
+        function getAllData(storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readonly");
+                const store = transaction.objectStore(storeName);
+                const req = store.getAll();
+                req.onsuccess = function() { resolve(req.result); };
+                req.onerror = function() { reject(req.error); };
+            });
+        }
+
+        async function renderUI() {
+            try {
+                const localIncomes = await getAllData('incomes');
+                const localExpenses = await getAllData('expenses');
+
+                localIncomes.sort((a, b) => b.date.localeCompare(a.date));
+                localExpenses.sort((a, b) => b.date.localeCompare(a.date));
+
+                const activeFilter = document.getElementById('dateFilter').value;
+                const incomeList = document.getElementById('incomeList');
+                const expenseList = document.getElementById('expenseList');
+                
+                incomeList.innerHTML = '';
+                expenseList.innerHTML = '';
+
+                // ၁။ ဒေတာအားလုံးရဲ့ တစ်နှစ်စာ Subtotal ပုံသေတွက်ချက်ခြင်း
+                let grandYearlyTotal = 0;
+                localIncomes.forEach(item => {
+                    grandYearlyTotal += (item.amount * 0.25) + Number(item.otherSavings);
+                });
+
+                // ၂။ Filter အတွက် ကတ်ပြားများ တွက်ချက်ခြင်း
+                let totalInc = 0, total25 = 0, totalOther = 0, totalExp = 0;
+
+                let filteredIncomes = activeFilter ? localIncomes.filter(i => i.date === activeFilter) : localIncomes;
+                let filteredExpenses = activeFilter ? localExpenses.filter(i => i.date === activeFilter) : localExpenses;
+
+                filteredIncomes.forEach(item => {
+                    totalInc += Number(item.amount); // 🌟 စုစုပေါင်းဝင်ငွေ
+                    total25 += (item.amount * 0.25);
+                    totalOther += Number(item.otherSavings);
+
+                    const div = document.createElement('div');
+                    div.className = 'p-3 rounded-3 border bg-light d-flex justify-content-between align-items-center';
+                    div.innerHTML = `
+                        <div>
+                            <span class="d-block fw-semibold" style="font-size: 13px;">ဝင်ငွေ: ${Number(item.amount).toLocaleString()} Ks</span>
+                            <small class="text-muted" style="font-size: 10px;">ရက်စွဲ: ${item.date} | ၂၅%: ${(item.amount*0.25).toLocaleString()} | အခြား: ${Number(item.otherSavings).toLocaleString()}</small>
+                        </div>
+                        <button onclick="deleteItem('incomes', '${item.id}')" class="btn btn-sm text-danger p-0" style="font-size: 11px;">Delete</button>
+                    `;
+                    incomeList.appendChild(div);
+                });
+
+                filteredExpenses.forEach(item => {
+                    totalExp += Number(item.amount);
+
+                    const div = document.createElement('div');
+                    div.className = 'p-3 rounded-3 border bg-light d-flex justify-content-between align-items-center';
+                    div.innerHTML = `
+                        <div>
+                            <span class="d-block fw-semibold" style="font-size: 13px;">${item.title}</span>
+                            <small class="text-danger" style="font-size: 11px;">-${Number(item.amount).toLocaleString()} Ks</small>
+                            <span class="d-block text-muted" style="font-size: 10px;">ရက်စွဲ: ${item.date}</span>
+                        </div>
+                        <button onclick="deleteItem('expenses', '${item.id}')" class="btn btn-sm text-danger p-0" style="font-size: 11px;">Delete</button>
+                    `;
+                    expenseList.appendChild(div);
+                });
+
+                // UI တန်ဖိုးများ ထည့်သွင်းခြင်း
+                document.getElementById('totalIncomeFiltered').textContent = `${totalInc.toLocaleString()} Ks`;
+                document.getElementById('totalPercentSavings').textContent = `${total25.toLocaleString()} Ks`;
+                document.getElementById('totalOtherSavings').textContent = `${totalOther.toLocaleString()} Ks`;
+                document.getElementById('totalExpenses').textContent = `${totalExp.toLocaleString()} Ks`;
+                document.getElementById('grandTotalSavings').textContent = `${grandYearlyTotal.toLocaleString()} Ks`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function addData(storeName, data) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readwrite");
+                const store = transaction.objectStore(storeName);
+                const req = store.put(data);
+                req.onsuccess = function() { resolve(); };
+                req.onerror = function() { reject(req.error); };
+            });
+        }
+
+        document.getElementById('incomeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                id: 'inc_' + Date.now(),
+                date: document.getElementById('incDate').value,
+                amount: Number(document.getElementById('incAmount').value),
+                otherSavings: Number(document.getElementById('incOther').value)
+            };
+            await addData('incomes', data);
+            document.getElementById('incAmount').value = '';
+            document.getElementById('incOther').value = '';
+            renderUI();
+        });
+
+        document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const select = document.getElementById('expCategory');
+            let finalTitle = select.value;
+
+            if (select.value === "အထွေထွေ") {
+                finalTitle = document.getElementById('expCustomTitle').value;
+            }
+
+            const data = {
+                id: 'exp_' + Date.now(),
+                date: document.getElementById('expDate').value,
+                title: finalTitle,
+                amount: Number(document.getElementById('expAmount').value)
+            };
+            
+            await addData('expenses', data);
+            document.getElementById('expCustomTitle').value = '';
+            handleCategoryChange();
+            renderUI();
+        });
+
+        function deleteItem(storeName, id) {
+            if(confirm("ဖျက်ရန် သေချာပါသလား?")) {
+                const transaction = db.transaction([storeName], "readwrite");
+                const store = transaction.objectStore(storeName);
+                const req = store.delete(id);
+                req.onsuccess = function() { renderUI(); };
+            }
+        }
+
+        // 📊 Excel Export - 🌟 ရက်စွဲ Filter ကို မငဲ့ဘဲ ဒေတာအားလုံးနှင့် အစုံအလင် ထုတ်ယူရန် ပြင်ဆင်ပြီး
+        async function exportExcel() {
+            const localIncomes = await getAllData('incomes');
+            const localExpenses = await getAllData('expenses');
+
+            if (localIncomes.length === 0 && localExpenses.length === 0) {
+                alert("ထုတ်ယူရန် ဒေတာမရှိသေးပါဗျာ။");
+                return;
+            }
+
+            // ဒေတာအားလုံး (All Data) ကို ရက်စွဲအလိုက် စီစဉ်ပြီး အကုန်ထုတ်ယူမည်
+            localIncomes.sort((a, b) => b.date.localeCompare(a.date));
+            localExpenses.sort((a, b) => b.date.localeCompare(a.date));
+
+            let csvIncome = "\uFEFFရက်စွဲ,ဝင်ငွေစုစုပေါင်း (ကျပ်),၂၅% စုငွေ (ကျပ်),အခြားစုငွေ (ကျပ်)\n";
+            localIncomes.forEach(i => {
+                csvIncome += `${i.date},${i.amount},${i.amount * 0.25},${i.otherSavings}\n`;
+            });
+
+            let csvExpense = "\uFEFFရက်စွဲ,အသုံးစရိတ် အကြောင်းအရာ,အသုံးပြုငွေ (ကျပ်)\n";
+            localExpenses.forEach(e => {
+                csvExpense += `${e.date},"${e.title.replace(/"/g, '""')}",${e.amount}\n`;
+            });
+
+            downloadCSVFile(csvIncome, `WealthFlow_All_Incomes.csv`);
+            setTimeout(() => {
+                downloadCSVFile(csvExpense, `WealthFlow_All_Expenses.csv`);
+            }, 300);
+        }
+
+        function downloadCSVFile(csvContent, fileName) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", fileName);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // ⬇️ Backup ဖိုင်ထုတ်ယူခြင်း (ဒေတာအားလုံး)
+        async function exportBackup() {
+            const incomes = await getAllData('incomes');
+            const expenses = await getAllData('expenses');
+            const backupData = { incomes, expenses };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `WealthFlow_Full_Backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // ⬆️ Backup ပြန်သွင်းခြင်း (ဒေတာအားလုံး)
+        function importBackup(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    if (backupData.incomes && backupData.expenses) {
+                        const tx = db.transaction(['incomes', 'expenses'], 'readwrite');
+                        tx.objectStore('incomes').clear();
+                        tx.objectStore('expenses').clear();
+
+                        for (let inc of backupData.incomes) {
+                            await addData('incomes', inc);
+                        }
+                        for (let exp of backupData.expenses) {
+                            await addData('expenses', exp);
+                        }
+
+                        alert("ဒေတာများ အောင်မြင်စွာ ပြန်လည်ထည့်သွင်းပြီးပါပြီဗျာ။");
+                        renderUI();
+                    } else {
+                        alert("မှားယွင်းသော ဖိုင်အမျိုးအစား ဖြစ်နေပါသည်နော်။");
+                    }
+                } catch (err) {
+                    alert("ဖိုင်ဖတ်ရတာ မှားယွင်းနေပါသည်ဗျာ။");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.getElementById('dateFilter').addEventListener('change', renderUI);
+        window.clearFilter = function() {
+            document.getElementById('dateFilter').value = '';
+            renderUI();
+        }
+    </script>
+</body>
+</html>
